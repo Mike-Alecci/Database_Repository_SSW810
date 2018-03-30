@@ -5,6 +5,9 @@ import os
 class Repository:
     """Creates a complete summary of the students and teachers"""
     def __init__(self, directory, create_prettytables = False):
+        self.students = PrettyTable(field_names= ["CWID", "Name", "Completed Courses", "Remaining Required", "Remaining Electives"])
+        self.instructors = PrettyTable(field_names= ["CWID", "Name", "Dept", "Course", "Students"])
+        self.majors = PrettyTable(field_names = ["Dept", "Required Courses", "Electives"])
         self.students = PrettyTable(field_names= ["CWID", "Name", "Completed Courses"])
         self.instructors = PrettyTable(field_names= ["CWID", "Name", "Dept", "Course", "Students"])
         try:
@@ -13,6 +16,12 @@ class Repository:
             raise NotADirectoryError ("Please provide a valid directory")
         self.stud_dict = {}     #dict with Keys = CWID, Values = instances of the Student object
         self.instr_dict = {}    #dict with Keys = CWID, Values = instances of the Instructor object
+        self.major_courses = defaultdict(set)      #default dict with keys = majors, Values = sets of courses
+        self.major_electives = defaultdict(set)    #default dict with keys = majors, Values = sets of electives
+        self.create_studentsummary()
+        self.create_instructorsummary()
+        self.create_grades()
+        self.analyze_majors()
         self.create_studentsummary()
         self.create_instructorsummary()
         self.create_grades()
@@ -64,6 +73,39 @@ class Repository:
                 raise ValueError ("The instructor, CWID: {}, was not in the instructor file!".format(i_cwid))
         return None
 
+    def analyze_majors(self):
+        """This function adds all of the information to students from the majors file"""
+        read_majors_file = self.read_files("majors.txt", expec_num_values = 3, error_mess = "Please pass in only major, flag, and course", seperator = "\t")
+        for major, flag, course in read_majors_file:
+            if flag == "R":
+                self.major_courses[major].add(course)
+            elif flag == "E":
+                self.major_electives[major].add(course)
+            else:
+                raise ValueError ("Please provide a proper flag")
+        for stud in self.stud_dict.values():
+            stud.majors(self.major_courses, self.major_electives)
+        return None 
+
+    def create_pretty_tables(self):
+        """This function creates and prints the pretty tables for view data nicely"""
+        for stud in self.stud_dict.values():
+            if len(stud.remaining_electives) != len(self.major_electives[stud.major]):
+                rem_elecs = "None"
+            else:
+                rem_elecs = stud.remaining_electives
+            if len(stud.passed_courses) == 0:
+                completed_courses = "None"
+            else:
+                completed_courses = stud.passed_courses
+            self.students.add_row([stud.cwid, stud.name, completed_courses, stud.remaining_courses, rem_elecs])
+        for inst in self.instr_dict.values():
+            for course in inst.instructor_courses:
+                self.instructors.add_row([inst.cwid, inst.name, inst.dept, course, inst.instructor_courses[course]])
+        for major in self.major_courses.keys():
+            self.majors.add_row([major, self.major_courses[major], self.major_electives[major]])
+        print (self.majors)
+
     def create_pretty_tables(self):
         """This function creates and prints the pretty tables for view data nicely"""
         for stud in self.stud_dict.values():
@@ -72,6 +114,7 @@ class Repository:
         for inst in self.instr_dict.values():
             for course in inst.instructor_courses:
                 self.instructors.add_row([inst.cwid, inst.name, inst.dept, course, inst.instructor_courses[course]])
+
         print (self.students)
         print (self.instructors)
         return None
@@ -84,10 +127,25 @@ class Student:
         self.name = name
         self.major = major
         self.stud_course_grades = defaultdict(str)
+        self.remaining_courses = set()
+        self.remaining_electives = set()  
+        self.passed_courses = set()
     
     def grades(self, course, grade):
         """This method creates a dictionary of courses taken and grade recieved"""
         self.stud_course_grades[course] = grade
+        return None
+
+    def majors(self, major_courses, major_electives):
+        """This method creates two lists of remaining courses and electives for each student based off major"""
+        if self.major in major_courses.keys():
+            for course in self.stud_course_grades:
+                if self.stud_course_grades[course] in {'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'}:
+                    self.passed_courses.add(course)       #populates a set of courses passed
+            self.remaining_courses = major_courses[self.major].difference(self.passed_courses)
+            self.remaining_electives = major_electives[self.major].difference(self.passed_courses)
+        else:
+            raise ValueError ("This students major does not exist in the majors file!")
         return None
         
 

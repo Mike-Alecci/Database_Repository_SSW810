@@ -38,6 +38,7 @@ class MichaelsHomeworkTest(unittest.TestCase):
             self.assertEqual(test.major_courses[key], test_req_courses[key])
         for key in test_req_elecs.keys():
             self.assertEqual(test_req_elecs[key], test.major_electives[key])
+          
 
 if __name__ == '__main__':
     unittest.main(exit=False, verbosity=2)

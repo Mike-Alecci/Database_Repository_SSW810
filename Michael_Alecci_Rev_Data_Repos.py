@@ -8,6 +8,8 @@ class Repository:
         self.students = PrettyTable(field_names= ["CWID", "Name", "Completed Courses", "Remaining Required", "Remaining Electives"])
         self.instructors = PrettyTable(field_names= ["CWID", "Name", "Dept", "Course", "Students"])
         self.majors = PrettyTable(field_names = ["Dept", "Required Courses", "Electives"])
+        self.students = PrettyTable(field_names= ["CWID", "Name", "Completed Courses"])
+        self.instructors = PrettyTable(field_names= ["CWID", "Name", "Dept", "Course", "Students"])
         try:
             os.chdir(directory)
         except FileNotFoundError:
@@ -20,6 +22,9 @@ class Repository:
         self.create_instructorsummary()
         self.create_grades()
         self.analyze_majors()
+        self.create_studentsummary()
+        self.create_instructorsummary()
+        self.create_grades()
         if create_prettytables == True:
             self.create_pretty_tables()
     
@@ -100,6 +105,16 @@ class Repository:
         for major in self.major_courses.keys():
             self.majors.add_row([major, self.major_courses[major], self.major_electives[major]])
         print (self.majors)
+
+    def create_pretty_tables(self):
+        """This function creates and prints the pretty tables for view data nicely"""
+        for stud in self.stud_dict.values():
+            courses = list(stud.stud_course_grades.keys())
+            self.students.add_row([stud.cwid, stud.name, sorted(courses)])
+        for inst in self.instr_dict.values():
+            for course in inst.instructor_courses:
+                self.instructors.add_row([inst.cwid, inst.name, inst.dept, course, inst.instructor_courses[course]])
+
         print (self.students)
         print (self.instructors)
         return None
@@ -132,6 +147,7 @@ class Student:
         else:
             raise ValueError ("This students major does not exist in the majors file!")
         return None
+        
 
 class Instructor:
     """This class creates a summary of teachers, tracking there CWID, name, dept, course, and number of students"""
